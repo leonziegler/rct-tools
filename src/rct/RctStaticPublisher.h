@@ -12,6 +12,8 @@
 #include <boost/thread.hpp>
 #include <log4cxx/logger.h>
 
+#include "parsers/Parser.h"
+
 namespace rct {
 
 class RctStaticPublisher;
@@ -47,7 +49,7 @@ public:
 	void run();
 	void interrupt();
 	void notify();
-
+	void addParser(const Parser::Ptr &p);
 private:
 	std::string configFile;
 	Transformer::Ptr transformerRsb;
@@ -60,7 +62,7 @@ private:
 	boost::condition_variable cond;
 	boost::mutex mutex;
 
-	std::vector<Transform> parseTransforms(const std::string &file) const;
+	std::vector<Parser::Ptr> parsers;
 
 	static log4cxx::LoggerPtr logger;
 };

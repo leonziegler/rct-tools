@@ -1,0 +1,18 @@
+<rct>
+	<core>
+		<cachetime value="30" />
+	</core>
+	<transforms>
+	
+		<transform name="a" parent="origin" child="map">
+			<translation x="1.0" y="2.0" z="3.0" unit="METER" />
+			<rotation qw="4.0" qx="3.0" qy="2.0" qz="1.0" unit="RADIAN" />
+		</transform>
+		
+		<transform name="b" parent="map" child="start">
+			<translation x="1.0" y="2.0" z="3.0" unit="CENTIMETER" />
+			<rotation roll="4.0" pitch="3.0" yaw="2.0" unit="DEGREE" />
+		</transform>
+		
+	</transforms>
+</rct>
