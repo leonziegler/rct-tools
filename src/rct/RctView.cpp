@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 
 	rct::TransformerConfig config;
 	rct::TransformerCore::Ptr core = rct::TransformerTF2::Ptr(new rct::TransformerTF2(config.getCacheTime()));
-	rct::TransformCommRsb::Ptr comm(new rct::TransformCommRsb(config.getCacheTime(), core));
+	rct::TransformCommRsb::Ptr comm(new rct::TransformCommRsb("view", config.getCacheTime(), core));
 	comm->init(config);
 	rct::Transformer::Ptr transformer(new rct::Transformer(core, comm, config));
 

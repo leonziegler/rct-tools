@@ -43,7 +43,7 @@ private:
 
 class RctStaticPublisher {
 public:
-	RctStaticPublisher(const std::string &configFile, bool bridge);
+	RctStaticPublisher(const std::string &configFile, const std::string &name = "rct-static-publisher", bool bridge = false);
 	virtual ~RctStaticPublisher();
 
 	void run();

@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 			boost::posix_time::microsec_clock::universal_time());
 
 	rct::Transformer::Ptr transformerRsb =
-			rct::getTransformerFactory().createTransformer();
+			rct::getTransformerFactory().createTransformer("echo");
 	rct::Transformer::FuturePtr future;
 	future = transformerRsb->requestTransform(frame_target, frame_source, now);
 

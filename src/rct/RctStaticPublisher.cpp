@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 
 	try {
 
-		publisher = new rct::RctStaticPublisher(vm["config"].as<string>(), vm.count("bridge"));
+		publisher = new rct::RctStaticPublisher(vm["config"].as<string>(), "rct-static-publisher", vm.count("bridge"));
 
 		publisher->addParser(rct::ParserINI::Ptr(new rct::ParserINI()));
 		publisher->addParser(rct::ParserXML::Ptr(new rct::ParserXML()));
@@ -99,7 +99,7 @@ namespace rct {
 
 log4cxx::LoggerPtr RctStaticPublisher::logger = log4cxx::Logger::getLogger("rct.RctStaticPublisher");
 
-RctStaticPublisher::RctStaticPublisher(const string &configFile, bool bridge) :
+RctStaticPublisher::RctStaticPublisher(const string &configFile, const string &name, bool bridge) :
 		configFile(configFile), bridge(bridge), interrupted(false) {
 
 	TransformerConfig configRsb;
@@ -110,7 +110,7 @@ RctStaticPublisher::RctStaticPublisher(const string &configFile, bool bridge) :
 		rosHandler = Handler::Ptr(new Handler(this));
 		rsbHandler = Handler::Ptr(new Handler(this));
 
-		transformerRsb = getTransformerFactory().createTransformer(rsbHandler, configRsb);
+		transformerRsb = getTransformerFactory().createTransformer(name, rsbHandler, configRsb);
 
 		TransformerConfig configRos;
 		configRos.setCommType(TransformerConfig::ROS);
@@ -119,7 +119,7 @@ RctStaticPublisher::RctStaticPublisher(const string &configFile, bool bridge) :
 		throw TransformerFactoryException("Can not activate bridge mode, because ROS implementation is not present!");
 #endif
 	} else {
-		transformerRsb = getTransformerFactory().createTransformer(configRsb);
+		transformerRsb = getTransformerFactory().createTransformer(name, configRsb);
 	}
 }
 

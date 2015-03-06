@@ -4,12 +4,27 @@
 	</core>
 	<transforms>
 	
-		<transform name="a" parent="origin" child="map">
+		<transform parent="origin" child="map">
 			<translation x="1.0" y="2.0" z="3.0" unit="METER" />
 			<rotation qw="4.0" qx="3.0" qy="2.0" qz="1.0" unit="RADIAN" />
 		</transform>
 		
-		<transform name="b" parent="map" child="start">
+		<transform parent="map" child="start">
+			<translation x="1.0" y="2.0" z="3.0" unit="CENTIMETER" />
+			<rotation roll="4.0" pitch="3.0" yaw="2.0" unit="DEGREE" />
+		</transform>
+		
+		<transform parent="origin" child="start1">
+			<translation x="1.0" y="2.0" z="3.0" unit="CENTIMETER" />
+			<rotation roll="4.0" pitch="3.0" yaw="2.0" unit="DEGREE" />
+		</transform>
+		
+		<transform parent="start" child="end0">
+			<translation x="1.0" y="2.0" z="3.0" unit="CENTIMETER" />
+			<rotation roll="4.0" pitch="3.0" yaw="2.0" unit="DEGREE" />
+		</transform>
+		
+		<transform parent="start" child="end1">
 			<translation x="1.0" y="2.0" z="3.0" unit="CENTIMETER" />
 			<rotation roll="4.0" pitch="3.0" yaw="2.0" unit="DEGREE" />
 		</transform>
