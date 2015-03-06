@@ -5,10 +5,9 @@
  *      Author: leon
  */
 
-#include "RctStaticPublisher.h"
 #include "parsers/ParserINI.h"
 #include "parsers/ParserXML.h"
-#include <rct/rctConfig.h>
+#include <rct/rct.h>
 
 #include <boost/program_options.hpp>
 
@@ -26,12 +25,13 @@ using namespace boost::program_options;
 using namespace boost::filesystem;
 using namespace std;
 using namespace log4cxx;
+using namespace rct;
 
-rct::RctStaticPublisher *publisher;
+bool running = true;
 
 void signalHandler(int signum) {
 	cout << "Interrupt signal (" << signum << ") received." << endl;
-	publisher->interrupt();
+	running = false;
 }
 
 int main(int argc, char **argv) {
@@ -40,7 +40,6 @@ int main(int argc, char **argv) {
 
 	desc.add_options()("help,h", "produce help message") // help
 	("config,c", value<string>(), "a single config file") // config file
-	("bridge", "rsb/ros bride mode") //bridge
 	("debug", "debug mode") //debug
 	("trace", "trace mode") //trace
 	("info", "info mode");
@@ -54,8 +53,8 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	if (!vm.count("dir") && !vm.count("config")) {
-		cerr << "\nERROR: either --dir or --config must be set!" << endl
+	if (!vm.count("config")) {
+		cerr << "\nERROR: --config must be set!" << endl
 				<< endl;
 		cout << desc << endl;
 	}
@@ -73,19 +72,42 @@ int main(int argc, char **argv) {
 	} else {
 		Logger::getRootLogger()->setLevel(Level::getWarn());
 	}
+	string configFile = vm["config"].as<string>();
+	log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("rct.RctStaticPublisher");
+
+	// register signal SIGINT and signal handler
+	signal(SIGINT, signalHandler);
+
+	std::vector<Parser::Ptr> parsers;
+	parsers.push_back(rct::ParserINI::Ptr(new rct::ParserINI()));
+	parsers.push_back(rct::ParserXML::Ptr(new rct::ParserXML()));
 
 	try {
 
-		publisher = new rct::RctStaticPublisher(vm["config"].as<string>(), "rct-static-publisher", vm.count("bridge"));
+		Transformer::Ptr transformer = getTransformerFactory().createTransformer("rct-static-publisher");
 
-		publisher->addParser(rct::ParserINI::Ptr(new rct::ParserINI()));
-		publisher->addParser(rct::ParserXML::Ptr(new rct::ParserXML()));
+		LOG4CXX_DEBUG(logger, "reading config file: " << configFile)
+		ParserResult result;
+		vector<Parser::Ptr>::iterator it;
+		for (it = parsers.begin(); it != parsers.end(); ++it) {
+			Parser::Ptr p = *it;
+			if (p->canParse(configFile)){
+				result =p->parse(configFile);
+				break;
+			}
+		}
 
-		// register signal SIGINT and signal handler
-		signal(SIGINT, signalHandler);
+		if (result.transforms.empty()) {
+			LOG4CXX_ERROR(logger, "no transforms to publish")
+		} else {
+			transformer->sendTransform(result.transforms, true);
+		}
 
-		// block
-		publisher->run();
+		// run until interrupted
+		while (running) {
+			sleep(1);
+		}
+		LOG4CXX_DEBUG(logger, "interrupted");
 
 	} catch (std::exception &e) {
 		cerr << "Error:\n  " << e.what() << "\n" << endl;
@@ -94,115 +116,3 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
-
-namespace rct {
-
-log4cxx::LoggerPtr RctStaticPublisher::logger = log4cxx::Logger::getLogger("rct.RctStaticPublisher");
-
-RctStaticPublisher::RctStaticPublisher(const string &configFile, const string &name, bool bridge) :
-		configFile(configFile), bridge(bridge), interrupted(false) {
-
-	TransformerConfig configRsb;
-	configRsb.setCommType(TransformerConfig::RSB);
-
-	if (bridge) {
-#ifdef RCT_HAVE_ROS
-		rosHandler = Handler::Ptr(new Handler(this));
-		rsbHandler = Handler::Ptr(new Handler(this));
-
-		transformerRsb = getTransformerFactory().createTransformer(name, rsbHandler, configRsb);
-
-		TransformerConfig configRos;
-		configRos.setCommType(TransformerConfig::ROS);
-		commRos = TransformCommRos::Ptr(new TransformCommRos(configRos.getCacheTime(), rosHandler));
-#else
-		throw TransformerFactoryException("Can not activate bridge mode, because ROS implementation is not present!");
-#endif
-	} else {
-		transformerRsb = getTransformerFactory().createTransformer(name, configRsb);
-	}
-}
-
-void RctStaticPublisher::notify() {
-	boost::mutex::scoped_lock lock(mutex);
-	cond.notify_all();
-}
-
-void RctStaticPublisher::run() {
-
-	LOG4CXX_DEBUG(logger, "reading config file: " << configFile)
-	ParserResult result;
-	vector<Parser::Ptr>::iterator it;
-	for (it = parsers.begin(); it != parsers.end(); ++it) {
-		Parser::Ptr p = *it;
-		if (p->canParse(configFile)){
-			result =p->parse(configFile);
-			break;
-		}
-	}
-
-	if (result.transforms.empty()) {
-		LOG4CXX_ERROR(logger, "no transforms to publish")
-	} else {
-		transformerRsb->sendTransform(result.transforms, true);
-	}
-
-	// run until interrupted
-	while (!interrupted) {
-		boost::mutex::scoped_lock lock(mutex);
-		// wait for notification
-		cond.wait(lock);
-		LOG4CXX_DEBUG(logger, "notified");
-		if (bridge) {
-			while(rsbHandler->hasTransforms()) {
-				TransformWrapper t = rsbHandler->nextTransform();
-				if (t.getAuthority() != transformerRsb->getAuthorityName()) {
-					commRos->sendTransform(t, t.isStatic);
-				} else {
-					LOG4CXX_TRACE(logger, "skip bridging of transform from rsb to ros because own authority: " << t.getAuthority());
-				}
-			}
-			while(rosHandler->hasTransforms()) {
-				TransformWrapper t = rosHandler->nextTransform();
-				if (t.getAuthority() != commRos->getAuthorityName()) {
-					transformerRsb->sendTransform(t, t.isStatic);
-				} else {
-					LOG4CXX_TRACE(logger, "skip bridging of transform from ros to rsb because own authority: " << t.getAuthority());
-				}
-			}
-		}
-	}
-	LOG4CXX_DEBUG(logger, "interrupted");
-}
-void RctStaticPublisher::interrupt() {
-	interrupted = true;
-	notify();
-}
-void RctStaticPublisher::addParser(const Parser::Ptr &p) {
-	parsers.push_back(p);
-}
-RctStaticPublisher::~RctStaticPublisher() {
-}
-
-void Handler::newTransformAvailable(const Transform& transform, bool isStatic) {
-	boost::mutex::scoped_lock lock(mutex);
-	TransformWrapper w(transform, isStatic);
-	transforms.push_back(w);
-	parent->notify();
-}
-bool Handler::hasTransforms() {
-	boost::mutex::scoped_lock lock(mutex);
-	return !transforms.empty();
-}
-
-TransformWrapper Handler::nextTransform() {
-	if (!hasTransforms()) {
-		throw std::range_error("no transforms available");
-	}
-	boost::mutex::scoped_lock lock(mutex);
-	TransformWrapper ret = *transforms.begin();
-	transforms.erase(transforms.begin());
-	return ret;
-}
-
-} /* namespace rct */

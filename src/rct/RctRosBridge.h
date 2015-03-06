@@ -1,5 +1,5 @@
 /*
- * RctStaticPublisher.h
+ * RctRosBridge.h
  *
  *  Created on: Dec 16, 2014
  *      Author: leon
@@ -12,11 +12,9 @@
 #include <boost/thread.hpp>
 #include <log4cxx/logger.h>
 
-#include "parsers/Parser.h"
-
 namespace rct {
 
-class RctStaticPublisher;
+class RctRosBridge;
 
 class TransformWrapper: public Transform {
 public:
@@ -28,7 +26,7 @@ public:
 class Handler: public TransformListener {
 public:
 	typedef boost::shared_ptr<Handler> Ptr;
-	Handler(RctStaticPublisher* parent): parent(parent) {
+	Handler(RctRosBridge* parent): parent(parent) {
 	}
 	virtual ~Handler() {
 	}
@@ -36,33 +34,29 @@ public:
 	bool hasTransforms();
 	TransformWrapper nextTransform();
 private:
-	RctStaticPublisher* parent;
+	RctRosBridge* parent;
 	boost::mutex mutex;
 	std::vector<TransformWrapper> transforms;
 };
 
-class RctStaticPublisher {
+class RctRosBridge {
 public:
-	RctStaticPublisher(const std::string &configFile, const std::string &name = "rct-static-publisher", bool bridge = false);
-	virtual ~RctStaticPublisher();
+	RctRosBridge(const std::string &name = "rct-ros-bridge");
+	virtual ~RctRosBridge();
 
 	void run();
 	void interrupt();
 	void notify();
 	void addParser(const Parser::Ptr &p);
 private:
-	std::string configFile;
 	Transformer::Ptr transformerRsb;
 	TransformCommunicator::Ptr commRos;
 	Handler::Ptr rosHandler;
 	Handler::Ptr rsbHandler;
-	bool bridge;
 	bool interrupted;
 
 	boost::condition_variable cond;
 	boost::mutex mutex;
-
-	std::vector<Parser::Ptr> parsers;
 
 	static log4cxx::LoggerPtr logger;
 };
