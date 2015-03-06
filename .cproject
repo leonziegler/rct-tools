@@ -22,9 +22,14 @@
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.198520391" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.353114742" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
 								<option id="gnu.cpp.compiler.option.include.paths.866695067" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="/homes/lziegler/local/include/"/>
 									<listOptionValue builtIn="false" value="/opt/ros/indigo/include"/>
 									<listOptionValue builtIn="false" value="/usr/include/eigen3"/>
+									<listOptionValue builtIn="false" value="&quot;${HOME}/local/include/&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/build/src/rct&quot;"/>
+									<listOptionValue builtIn="false" value="/usr/include/poppler/qt5"/>
+									<listOptionValue builtIn="false" value="/usr/include/qt5/QtCore"/>
+									<listOptionValue builtIn="false" value="/usr/include/qt5/QtGui"/>
+									<listOptionValue builtIn="false" value="/usr/include/qt5/QtWidgets"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1230691207" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>

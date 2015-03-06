@@ -1,0 +1,2 @@
+#cmakedefine POPPLERQT4_FOUND
+#cmakedefine POPPLERQT5_FOUND
