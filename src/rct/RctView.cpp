@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
 
 	cout << "collecting transforms for " << seconds << " sec" << endl;
 	usleep(seconds * 1000000.0);
+	cout << "done" << endl;
 
 	string dotStr = core->allFramesAsDot();
 

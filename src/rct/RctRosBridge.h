@@ -35,7 +35,7 @@ public:
 	TransformWrapper nextTransform();
 private:
 	RctRosBridge* parent;
-	boost::mutex mutex;
+	boost::mutex mutexHandler;
 	std::vector<TransformWrapper> transforms;
 };
 
@@ -47,7 +47,6 @@ public:
 	void run();
 	void interrupt();
 	void notify();
-	void addParser(const Parser::Ptr &p);
 private:
 	Transformer::Ptr transformerRsb;
 	TransformCommunicator::Ptr commRos;

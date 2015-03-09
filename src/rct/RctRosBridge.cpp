@@ -68,7 +68,10 @@ int main(int argc, char **argv) {
 
 	try {
 
-		bridge = new rct::RctRosBridge();
+		map<string, string> remappings;
+		ros::init(argc, argv, "rctrosbridge");
+
+		bridge = new rct::RctRosBridge("rctrosbridge");
 
 		// register signal SIGINT and signal handler
 		signal(SIGINT, signalHandler);
@@ -101,7 +104,8 @@ RctRosBridge::RctRosBridge(const string &name) :
 
 	TransformerConfig configRos;
 	configRos.setCommType(TransformerConfig::ROS);
-	commRos = TransformCommRos::Ptr(new TransformCommRos(configRos.getCacheTime(), rosHandler));
+	commRos = TransformCommRos::Ptr(new TransformCommRos(name, configRos.getCacheTime(), rosHandler));
+	commRos->init(configRos);
 }
 
 void RctRosBridge::notify() {
@@ -119,26 +123,39 @@ void RctRosBridge::run() {
 		LOG4CXX_DEBUG(logger, "notified");
 		if (bridge) {
 			while (rsbHandler->hasTransforms()) {
+				LOG4CXX_DEBUG(logger, "rsb handler has transforms");
 				TransformWrapper t = rsbHandler->nextTransform();
 				if (t.getAuthority() != transformerRsb->getAuthorityName()) {
-					commRos->sendTransform(t, t.isStatic);
+					TransformType type = STATIC;
+					if (!t.isStatic) {
+						type = DYNAMIC;
+					}
+					t.setAuthority(string("rct:") + t.getAuthority());
+					commRos->sendTransform(t, type);
 				} else {
 					LOG4CXX_TRACE(logger,
 							"skip bridging of transform from rsb to ros because own authority: " << t.getAuthority());
 				}
 			}
 			while (rosHandler->hasTransforms()) {
+				LOG4CXX_DEBUG(logger, "ros handler has transforms");
 				TransformWrapper t = rosHandler->nextTransform();
 				if (t.getAuthority() != commRos->getAuthorityName()) {
-					transformerRsb->sendTransform(t, t.isStatic);
+					TransformType type = STATIC;
+					if (!t.isStatic) {
+						type = DYNAMIC;
+					}
+					t.setAuthority(string("ros:") + t.getAuthority());
+					transformerRsb->sendTransform(t, type);
 				} else {
 					LOG4CXX_TRACE(logger,
 							"skip bridging of transform from ros to rsb because own authority: " << t.getAuthority());
 				}
 			}
 		}
+		LOG4CXX_TRACE(logger, "loop done");
 	}
-	LOG4CXX_DEBUG(logger, "interrupted");
+	LOG4CXX_TRACE(logger, "interrupted");
 }
 void RctRosBridge::interrupt() {
 	interrupted = true;
@@ -149,13 +166,15 @@ RctRosBridge::~RctRosBridge() {
 }
 
 void Handler::newTransformAvailable(const Transform& transform, bool isStatic) {
-	boost::mutex::scoped_lock lock(mutex);
-	TransformWrapper w(transform, isStatic);
-	transforms.push_back(w);
+	{
+		boost::mutex::scoped_lock lock(mutexHandler);
+		TransformWrapper w(transform, isStatic);
+		transforms.push_back(w);
+	}
 	parent->notify();
 }
 bool Handler::hasTransforms() {
-	boost::mutex::scoped_lock lock(mutex);
+	boost::mutex::scoped_lock lock(mutexHandler);
 	return !transforms.empty();
 }
 
@@ -163,7 +182,7 @@ TransformWrapper Handler::nextTransform() {
 	if (!hasTransforms()) {
 		throw std::range_error("no transforms available");
 	}
-	boost::mutex::scoped_lock lock(mutex);
+	boost::mutex::scoped_lock lock(mutexHandler);
 	TransformWrapper ret = *transforms.begin();
 	transforms.erase(transforms.begin());
 	return ret;

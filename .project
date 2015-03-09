@@ -3,6 +3,7 @@
 	<name>rct-tools</name>
 	<comment></comment>
 	<projects>
+		<project>rct-cpp</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

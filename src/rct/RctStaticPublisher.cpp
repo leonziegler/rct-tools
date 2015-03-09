@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 		if (result.transforms.empty()) {
 			LOG4CXX_ERROR(logger, "no transforms to publish")
 		} else {
-			transformer->sendTransform(result.transforms, true);
+			transformer->sendTransform(result.transforms, rct::STATIC);
 		}
 
 		// run until interrupted

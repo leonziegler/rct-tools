@@ -9,6 +9,14 @@ SET_TARGET_PROPERTIES(rct-static-publisher PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
 
+IF(tf2_ros_FOUND)
+    ADD_EXECUTABLE(rct-ros-bridge rct/RctRosBridge.cpp)
+    TARGET_LINK_LIBRARIES(rct-ros-bridge ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} ${Log4cxx_LIBRARIES} ${tf2_ros_LIBRARIES})
+    SET_TARGET_PROPERTIES(rct-ros-bridge PROPERTIES
+                                 VERSION ${RCTTOOLS_VERSION}
+                                 SOVERSION ${RCTTOOLS_VERSION_SHORT})
+ENDIF(tf2_ros_FOUND)
+
 ADD_EXECUTABLE(rct-echo rct/RctEcho.cpp)
 TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} ${Log4cxx_LIBRARIES})
 SET_TARGET_PROPERTIES(rct-echo PROPERTIES
