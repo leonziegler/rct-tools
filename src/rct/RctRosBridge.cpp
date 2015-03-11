@@ -17,6 +17,7 @@
 #include <log4cxx/log4cxx.h>
 #include <log4cxx/logger.h>
 #include <log4cxx/basicconfigurator.h>
+#include <log4cxx/propertyconfigurator.h>
 #include <log4cxx/consoleappender.h>
 #include <log4cxx/patternlayout.h>
 #include <iostream>
@@ -41,7 +42,8 @@ int main(int argc, char **argv) {
 	desc.add_options()("help,h", "produce help message") // help
 	("debug", "debug mode") //debug
 	("trace", "trace mode") //trace
-	("info", "info mode");
+	("info", "info mode")
+	("log-prop,l", value<string>(), "logging properties (log4cxx)");
 
 	store(parse_command_line(argc, argv, desc), vm);
 	notify(vm);
@@ -62,6 +64,10 @@ int main(int argc, char **argv) {
 		Logger::getRootLogger()->setLevel(Level::getTrace());
 	} else if (vm.count("info")) {
 		Logger::getRootLogger()->setLevel(Level::getInfo());
+	} else if (vm.count("log-prop")) {
+		string properties = vm["log-prop"].as<string>();
+		cout << "Using logging properties: " << properties << endl;
+		PropertyConfigurator::configure(properties);
 	} else {
 		Logger::getRootLogger()->setLevel(Level::getWarn());
 	}
@@ -76,35 +82,43 @@ int main(int argc, char **argv) {
 		// register signal SIGINT and signal handler
 		signal(SIGINT, signalHandler);
 
+		ros::AsyncSpinner spinner(4);
+		spinner.start();
+
+		cout << "successfully started" << endl;
+
 		// block
-		bridge->run();
+		bool ret = bridge->run();
+
+		if (!ret) {
+			cout << "done" << endl;
+		}
+		return ret;
 
 	} catch (std::exception &e) {
 		cerr << "Error:\n  " << e.what() << "\n" << endl;
 		return 1;
 	}
-
-	return 0;
 }
 
 namespace rct {
 
 log4cxx::LoggerPtr RctRosBridge::logger = log4cxx::Logger::getLogger("rct.RctRosBridge");
 
-RctRosBridge::RctRosBridge(const string &name) :
+RctRosBridge::RctRosBridge(const string &name, bool rosLegacyMode, long rosLegacyIntervalMSec) :
 		interrupted(false) {
 
 	TransformerConfig configRsb;
 	configRsb.setCommType(TransformerConfig::RSB);
 
-	rosHandler = Handler::Ptr(new Handler(this));
-	rsbHandler = Handler::Ptr(new Handler(this));
+	rosHandler = Handler::Ptr(new Handler(this, "Ros"));
+	rsbHandler = Handler::Ptr(new Handler(this, "Rsb"));
 
 	transformerRsb = getTransformerFactory().createTransformer(name, rsbHandler, configRsb);
 
 	TransformerConfig configRos;
 	configRos.setCommType(TransformerConfig::ROS);
-	commRos = TransformCommRos::Ptr(new TransformCommRos(name, configRos.getCacheTime(), rosHandler));
+	commRos = TransformCommRos::Ptr(new TransformCommRos(name, configRos.getCacheTime(), rosHandler, rosLegacyMode, rosLegacyIntervalMSec));
 	commRos->init(configRos);
 }
 
@@ -113,14 +127,16 @@ void RctRosBridge::notify() {
 	cond.notify_all();
 }
 
-void RctRosBridge::run() {
+bool RctRosBridge::run() {
+
+	LOG4CXX_INFO(logger, "start running");
 
 	// run until interrupted
-	while (!interrupted) {
+	while (!interrupted && ros::ok()) {
 		boost::mutex::scoped_lock lock(mutex);
 		// wait for notification
 		cond.wait(lock);
-		LOG4CXX_DEBUG(logger, "notified");
+		LOG4CXX_TRACE(logger, "notified");
 		if (bridge) {
 			while (rsbHandler->hasTransforms()) {
 				LOG4CXX_DEBUG(logger, "rsb handler has transforms");
@@ -129,9 +145,16 @@ void RctRosBridge::run() {
 					TransformType type = STATIC;
 					if (!t.isStatic) {
 						type = DYNAMIC;
+						LOG4CXX_DEBUG(logger, "publish dynamic transform " << t);
+					} else {
+						LOG4CXX_DEBUG(logger, "publish static transform " << t);
 					}
 					t.setAuthority(string("rct:") + t.getAuthority());
-					commRos->sendTransform(t, type);
+					try {
+						commRos->sendTransform(t, type);
+					} catch (std::exception& e) {
+						LOG4CXX_TRACE(logger, "Error sending transform. Reason: " << e.what());
+					}
 				} else {
 					LOG4CXX_TRACE(logger,
 							"skip bridging of transform from rsb to ros because own authority: " << t.getAuthority());
@@ -146,7 +169,11 @@ void RctRosBridge::run() {
 						type = DYNAMIC;
 					}
 					t.setAuthority(string("ros:") + t.getAuthority());
-					transformerRsb->sendTransform(t, type);
+					try {
+						transformerRsb->sendTransform(t, type);
+					} catch (std::exception& e) {
+						LOG4CXX_TRACE(logger, "Error sending transform. Reason: " << e.what());
+					}
 				} else {
 					LOG4CXX_TRACE(logger,
 							"skip bridging of transform from ros to rsb because own authority: " << t.getAuthority());
@@ -155,7 +182,18 @@ void RctRosBridge::run() {
 		}
 		LOG4CXX_TRACE(logger, "loop done");
 	}
-	LOG4CXX_TRACE(logger, "interrupted");
+	LOG4CXX_WARN(logger, "interrupted");
+	LOG4CXX_INFO(logger, "shutdown");
+	transformerRsb->shutdown();
+	commRos->shutdown();
+
+	if (!ros::ok()) {
+		LOG4CXX_WARN(logger, "Shutdown request received from ROS");
+		cerr << "Shutdown request received from ROS" << endl;
+		return 1;
+	}
+	LOG4CXX_INFO(logger, "done");
+	return 0;
 }
 void RctRosBridge::interrupt() {
 	interrupted = true;
@@ -166,6 +204,7 @@ RctRosBridge::~RctRosBridge() {
 }
 
 void Handler::newTransformAvailable(const Transform& transform, bool isStatic) {
+	LOG4CXX_TRACE(logger, "newTransformAvailable()");
 	{
 		boost::mutex::scoped_lock lock(mutexHandler);
 		TransformWrapper w(transform, isStatic);

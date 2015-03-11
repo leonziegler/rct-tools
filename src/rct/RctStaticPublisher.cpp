@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
 
 	desc.add_options()("help,h", "produce help message") // help
 	("config,c", value<string>(), "a single config file") // config file
+	("name,n", value<string>(), "name for this instance") // config file
 	("debug", "debug mode") //debug
 	("trace", "trace mode") //trace
 	("info", "info mode");
@@ -57,6 +58,10 @@ int main(int argc, char **argv) {
 		cerr << "\nERROR: --config must be set!" << endl
 				<< endl;
 		cout << desc << endl;
+	}
+	string name = "static-publisher";
+	if (vm.count("name")) {
+		name = vm["name"].as<string>();
 	}
 
 	LayoutPtr pattern(new PatternLayout("%r [%t] %-5p %c - %m%n"));
@@ -84,7 +89,7 @@ int main(int argc, char **argv) {
 
 	try {
 
-		Transformer::Ptr transformer = getTransformerFactory().createTransformer("rct-static-publisher");
+		Transformer::Ptr transformer = getTransformerFactory().createTransformer(name);
 
 		LOG4CXX_DEBUG(logger, "reading config file: " << configFile)
 		ParserResult result;
@@ -100,6 +105,7 @@ int main(int argc, char **argv) {
 		if (result.transforms.empty()) {
 			LOG4CXX_ERROR(logger, "no transforms to publish")
 		} else {
+			cout << "successfully started" << endl;
 			transformer->sendTransform(result.transforms, rct::STATIC);
 		}
 
@@ -113,6 +119,6 @@ int main(int argc, char **argv) {
 		cerr << "Error:\n  " << e.what() << "\n" << endl;
 		return 1;
 	}
-
+	cout << "done" << endl;
 	return 0;
 }

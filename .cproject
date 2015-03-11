@@ -24,7 +24,6 @@
 								<option id="gnu.cpp.compiler.option.include.paths.866695067" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/opt/ros/indigo/include"/>
 									<listOptionValue builtIn="false" value="/usr/include/eigen3"/>
-									<listOptionValue builtIn="false" value="&quot;${HOME}/local/include/&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${ProjDirPath}/build/src/rct&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/include/poppler/qt5"/>
 									<listOptionValue builtIn="false" value="/usr/include/qt5/QtCore"/>
@@ -54,7 +53,9 @@
 					</sourceEntries>
 				</configuration>
 			</storageModule>
-			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.externalSettings">
+				<externalSettings containerId="rct-cpp;" factoryId="org.eclipse.cdt.core.cfg.export.settings.sipplier"/>
+			</storageModule>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">

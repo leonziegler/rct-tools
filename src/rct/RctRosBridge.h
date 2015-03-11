@@ -18,7 +18,8 @@ class RctRosBridge;
 
 class TransformWrapper: public Transform {
 public:
-	TransformWrapper(const Transform& t, bool isStatic): Transform(t), isStatic(isStatic) {
+	TransformWrapper(const Transform& t, bool isStatic) :
+			Transform(t), isStatic(isStatic) {
 	}
 	bool isStatic;
 };
@@ -26,7 +27,11 @@ public:
 class Handler: public TransformListener {
 public:
 	typedef boost::shared_ptr<Handler> Ptr;
-	Handler(RctRosBridge* parent): parent(parent) {
+	Handler(RctRosBridge* parent, const std::string &loggerSuffix = "") :
+			parent(parent),
+			logger(
+					log4cxx::Logger::getLogger(
+							std::string("rct.RctRosBridge.Handler") + loggerSuffix)) {
 	}
 	virtual ~Handler() {
 	}
@@ -37,14 +42,15 @@ private:
 	RctRosBridge* parent;
 	boost::mutex mutexHandler;
 	std::vector<TransformWrapper> transforms;
+	log4cxx::LoggerPtr logger;
 };
 
 class RctRosBridge {
 public:
-	RctRosBridge(const std::string &name = "rct-ros-bridge");
+	RctRosBridge(const std::string &name = "rct-ros-bridge", bool rosLegacyMode = true, long rosLegacyIntervalMSec = 100);
 	virtual ~RctRosBridge();
 
-	void run();
+	bool run();
 	void interrupt();
 	void notify();
 private:
