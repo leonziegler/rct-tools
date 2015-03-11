@@ -9,6 +9,7 @@
 #include <rct/rctConfig.h>
 #include <rct/impl/TransformCommRsb.h>
 #include <rct/impl/TransformCommRos.h>
+#include <rct/impl/TransformerTF2.h>
 
 #include <boost/program_options.hpp>
 
@@ -108,13 +109,13 @@ log4cxx::LoggerPtr RctRosBridge::logger = log4cxx::Logger::getLogger("rct.RctRos
 RctRosBridge::RctRosBridge(const string &name, bool rosLegacyMode, long rosLegacyIntervalMSec) :
 		interrupted(false) {
 
-	TransformerConfig configRsb;
-	configRsb.setCommType(TransformerConfig::RSB);
-
 	rosHandler = Handler::Ptr(new Handler(this, "Ros"));
 	rsbHandler = Handler::Ptr(new Handler(this, "Rsb"));
 
-	transformerRsb = getTransformerFactory().createTransformer(name, rsbHandler, configRsb);
+	TransformerConfig configRsb;
+	configRsb.setCommType(TransformerConfig::RSB);
+	commRsb = TransformCommRsb::Ptr(new TransformCommRsb(name, rsbHandler));
+	commRsb->init(configRsb);
 
 	TransformerConfig configRos;
 	configRos.setCommType(TransformerConfig::ROS);
@@ -135,13 +136,14 @@ bool RctRosBridge::run() {
 	while (!interrupted && ros::ok()) {
 		boost::mutex::scoped_lock lock(mutex);
 		// wait for notification
+		LOG4CXX_TRACE(logger, "wait");
 		cond.wait(lock);
 		LOG4CXX_TRACE(logger, "notified");
 		if (bridge) {
 			while (rsbHandler->hasTransforms()) {
 				LOG4CXX_DEBUG(logger, "rsb handler has transforms");
 				TransformWrapper t = rsbHandler->nextTransform();
-				if (t.getAuthority() != transformerRsb->getAuthorityName()) {
+				if (t.getAuthority() != commRsb->getAuthorityName()) {
 					TransformType type = STATIC;
 					if (!t.isStatic) {
 						type = DYNAMIC;
@@ -170,7 +172,7 @@ bool RctRosBridge::run() {
 					}
 					t.setAuthority(string("ros:") + t.getAuthority());
 					try {
-						transformerRsb->sendTransform(t, type);
+						commRsb->sendTransform(t, type);
 					} catch (std::exception& e) {
 						LOG4CXX_TRACE(logger, "Error sending transform. Reason: " << e.what());
 					}
@@ -184,7 +186,9 @@ bool RctRosBridge::run() {
 	}
 	LOG4CXX_WARN(logger, "interrupted");
 	LOG4CXX_INFO(logger, "shutdown");
-	transformerRsb->shutdown();
+	LOG4CXX_TRACE(logger, "shutdown rsb communicator");
+	commRsb->shutdown();
+	LOG4CXX_TRACE(logger, "shutdown ros communicator");
 	commRos->shutdown();
 
 	if (!ros::ok()) {

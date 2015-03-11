@@ -6,7 +6,7 @@
  */
 #include <rct/rctConfig.h>
 #include <rct/TransformerFactory.h>
-#include <rct/Transformer.h>
+#include <rct/TransformReceiver.h>
 #include <rct/TransformerConfig.h>
 #include <rct/impl/TransformerTF2.h>
 #include <rct/impl/TransformCommRsb.h>
@@ -82,17 +82,13 @@ int main(int argc, char **argv) {
 		seconds = vm["duration"].as<double>();
 	}
 
-	rct::TransformerConfig config;
-	rct::TransformerCore::Ptr core = rct::TransformerTF2::Ptr(new rct::TransformerTF2(config.getCacheTime()));
-	rct::TransformCommRsb::Ptr comm(new rct::TransformCommRsb("view", config.getCacheTime(), core));
-	comm->init(config);
-	rct::Transformer::Ptr transformer(new rct::Transformer(core, comm, config));
+	rct::TransformReceiver::Ptr receiver = rct::getTransformerFactory().createTransformReceiver();
 
 	cout << "collecting transforms for " << seconds << " sec" << endl;
 	usleep(seconds * 1000000.0);
 	cout << "done" << endl;
 
-	string dotStr = core->allFramesAsDot();
+	string dotStr = receiver->getCore()->allFramesAsDot();
 
 	if (dotStr.empty()) {
 		cerr << "no transforms found" << endl;

@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 
 	try {
 
-		Transformer::Ptr transformer = getTransformerFactory().createTransformer(name);
+		TransformPublisher::Ptr publisher = getTransformerFactory().createTransformPublisher(name);
 
 		LOG4CXX_DEBUG(logger, "reading config file: " << configFile)
 		ParserResult result;
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
 			LOG4CXX_ERROR(logger, "no transforms to publish")
 		} else {
 			cout << "successfully started" << endl;
-			transformer->sendTransform(result.transforms, rct::STATIC);
+			publisher->sendTransform(result.transforms, rct::STATIC);
 		}
 
 		// run until interrupted

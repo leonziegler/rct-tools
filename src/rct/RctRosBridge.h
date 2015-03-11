@@ -8,7 +8,7 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <rct/TransformerFactory.h>
+#include <rct/impl/TransformCommunicator.h>
 #include <boost/thread.hpp>
 #include <log4cxx/logger.h>
 
@@ -54,7 +54,7 @@ public:
 	void interrupt();
 	void notify();
 private:
-	Transformer::Ptr transformerRsb;
+	TransformCommunicator::Ptr commRsb;
 	TransformCommunicator::Ptr commRos;
 	Handler::Ptr rosHandler;
 	Handler::Ptr rsbHandler;

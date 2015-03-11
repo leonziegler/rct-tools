@@ -6,7 +6,6 @@
  */
 #include <rct/rctConfig.h>
 #include <rct/TransformerFactory.h>
-#include <rct/Transformer.h>
 #include <boost/program_options.hpp>
 #include <log4cxx/log4cxx.h>
 #include <log4cxx/logger.h>
@@ -16,11 +15,11 @@
 
 using namespace boost::program_options;
 using namespace std;
+using namespace rct;
 using namespace log4cxx;
 
 void printHelp(int argc, char **argv, options_description desc) {
-	cout << "Usage:\n  " << argv[0] << " [options] source_frame target_frame\n"
-			<< endl;
+	cout << "Usage:\n  " << argv[0] << " [options] source_frame target_frame\n" << endl;
 	cout << desc << endl;
 	cout << "This will echo the transform from the coordinate" << endl;
 	cout << "frame of the source_frame to the coordinate frame" << endl;
@@ -29,8 +28,8 @@ void printHelp(int argc, char **argv, options_description desc) {
 	cout << "target_frame into the source_frame." << endl;
 }
 
-int handleArgs(int argc, char **argv, string &frame_target,
-		string &frame_source, bool &matrix, bool &quaternion) {
+int handleArgs(int argc, char **argv, string &frame_target, string &frame_source, bool &matrix,
+		bool &quaternion) {
 	boost::program_options::positional_options_description p0;
 	p0.add("frames", -1);
 
@@ -49,8 +48,7 @@ int handleArgs(int argc, char **argv, string &frame_target,
 
 	options_description all;
 	all.add(desc).add(hidden);
-	store(command_line_parser(argc, argv).options(all).positional(p0).run(),
-			vm);
+	store(command_line_parser(argc, argv).options(all).positional(p0).run(), vm);
 	notify(vm);
 
 	if (vm.count("help")) {
@@ -95,22 +93,18 @@ int handleArgs(int argc, char **argv, string &frame_target,
 
 int main(int argc, char **argv) {
 
-	string frame_target, frame_source;
+	string frameTgt, frameSrc;
 	bool matrix, quaternion;
 
-	int ret = handleArgs(argc, argv, frame_target, frame_source, matrix,
-			quaternion);
+	int ret = handleArgs(argc, argv, frameTgt, frameSrc, matrix, quaternion);
 	if (ret != 0) {
 		return ret;
 	}
 
-	boost::posix_time::ptime now(
-			boost::posix_time::microsec_clock::universal_time());
+	boost::posix_time::ptime now(boost::posix_time::microsec_clock::universal_time());
 
-	rct::Transformer::Ptr transformerRsb =
-			rct::getTransformerFactory().createTransformer("echo");
-	rct::Transformer::FuturePtr future;
-	future = transformerRsb->requestTransform(frame_target, frame_source, now);
+	TransformReceiver::Ptr transformerRsb = getTransformerFactory().createTransformReceiver();
+	TransformReceiver::FuturePtr future = transformerRsb->requestTransform(frameTgt, frameSrc, now);
 
 	try {
 		rct::Transform t = future->get(2.0);
@@ -120,13 +114,13 @@ int main(int argc, char **argv) {
 		} else if (quaternion) {
 			cout << "Translation (x,y,z):\n" << t.getTranslation() << endl;
 			cout << "Rotation (Quat w,x,y,z):\n" << t.getRotationQuat().w() << "\n"
-					<< t.getRotationQuat().x() << "\n" << t.getRotationQuat().y()
-					<< "\n" << t.getRotationQuat().z() << endl;
+					<< t.getRotationQuat().x() << "\n" << t.getRotationQuat().y() << "\n"
+					<< t.getRotationQuat().z() << endl;
 		} else {
 			Eigen::Vector3d ypr = t.getRotationYPR();
 			cout << "Translation (x,y,z):\n" << t.getTranslation() << endl;
-			cout << "Rotation (yaw,pitch,roll):\n" << ypr.x() << "\n" << ypr.y()
-					<< "\n" << ypr.z() << endl;
+			cout << "Rotation (yaw,pitch,roll):\n" << ypr.x() << "\n" << ypr.y() << "\n" << ypr.z()
+					<< endl;
 		}
 		return 0;
 	} catch (std::exception &e) {
