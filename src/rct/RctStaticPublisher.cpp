@@ -13,18 +13,14 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <log4cxx/log4cxx.h>
-#include <log4cxx/logger.h>
-#include <log4cxx/basicconfigurator.h>
-#include <log4cxx/consoleappender.h>
-#include <log4cxx/patternlayout.h>
+#include <rsc/logging/Logger.h>
 #include <iostream>
 #include <csignal>
 
 using namespace boost::program_options;
 using namespace boost::filesystem;
 using namespace std;
-using namespace log4cxx;
+using namespace rsc::logging;
 using namespace rct;
 
 bool running = true;
@@ -64,21 +60,18 @@ int main(int argc, char **argv) {
 		name = vm["name"].as<string>();
 	}
 
-	LayoutPtr pattern(new PatternLayout("%r [%t] %-5p %c - %m%n"));
-	AppenderPtr appender(new ConsoleAppender(pattern));
-	Logger::getRootLogger()->addAppender(appender);
-
+	Logger::getLogger("")->setLevel(Logger::LEVEL_WARN);
 	if (vm.count("debug")) {
-		Logger::getRootLogger()->setLevel(Level::getDebug());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_DEBUG);
 	} else if (vm.count("trace")) {
-		Logger::getRootLogger()->setLevel(Level::getTrace());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_TRACE);
 	} else if (vm.count("info")) {
-		Logger::getRootLogger()->setLevel(Level::getInfo());
-	} else {
-		Logger::getRootLogger()->setLevel(Level::getWarn());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_INFO);
 	}
+
+
 	string configFile = vm["config"].as<string>();
-	log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("rct.RctStaticPublisher");
+	LoggerPtr logger = Logger::getLogger("rct.RctStaticPublisher");
 
 	// register signal SIGINT and signal handler
 	signal(SIGINT, signalHandler);
@@ -91,7 +84,7 @@ int main(int argc, char **argv) {
 
 		TransformPublisher::Ptr publisher = getTransformerFactory().createTransformPublisher(name);
 
-		LOG4CXX_DEBUG(logger, "reading config file: " << configFile)
+		RSCDEBUG(logger, "reading config file: " << configFile)
 		ParserResult result;
 		vector<Parser::Ptr>::iterator it;
 		for (it = parsers.begin(); it != parsers.end(); ++it) {
@@ -103,7 +96,7 @@ int main(int argc, char **argv) {
 		}
 
 		if (result.transforms.empty()) {
-			LOG4CXX_ERROR(logger, "no transforms to publish")
+			RSCERROR(logger, "no transforms to publish")
 		} else {
 			cout << "successfully started" << endl;
 			publisher->sendTransform(result.transforms, rct::STATIC);
@@ -113,7 +106,7 @@ int main(int argc, char **argv) {
 		while (running) {
 			sleep(1);
 		}
-		LOG4CXX_DEBUG(logger, "interrupted");
+		RSCDEBUG(logger, "interrupted");
 
 	} catch (std::exception &e) {
 		cerr << "Error:\n  " << e.what() << "\n" << endl;

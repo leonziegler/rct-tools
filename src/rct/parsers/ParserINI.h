@@ -9,7 +9,7 @@
 
 #include "Parser.h"
 
-#include <log4cxx/logger.h>
+#include <rsc/logging/Logger.h>
 
 namespace rct {
 
@@ -23,7 +23,7 @@ public:
 	virtual ParserResult parse(const std::string& file);
 
 private:
-	static log4cxx::LoggerPtr logger;
+	static rsc::logging::LoggerPtr logger;
 };
 
 }  // namespace rct

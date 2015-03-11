@@ -16,7 +16,7 @@ using namespace boost::property_tree;
 
 namespace rct {
 
-log4cxx::LoggerPtr ParserXML::logger = log4cxx::Logger::getLogger("rct.ParserXML");
+rsc::logging::LoggerPtr ParserXML::logger = rsc::logging::Logger::getLogger("rct.ParserXML");
 
 ParserXML::ParserXML() {
 
@@ -30,9 +30,9 @@ bool ParserXML::canParse(const string& file) {
 	try {
 		xml_parser::read_xml(file, pt);
 	} catch (xml_parser_error &e) {
-		LOG4CXX_TRACE(logger, "cannot parse " << file << ". Reason: " << e.what());
+		RSCTRACE(logger, "cannot parse " << file << ". Reason: " << e.what());
 	}
-	LOG4CXX_DEBUG(logger, "can parse " << file << ": " << !pt.empty());
+	RSCDEBUG(logger, "can parse " << file << ": " << !pt.empty());
 	return !pt.empty();
 }
 
@@ -40,25 +40,25 @@ ParserResult ParserXML::parse(const string& file) {
 	ptree pt;
 	xml_parser::read_xml(file, pt);
 
-	LOG4CXX_DEBUG(logger, "parse: " << file);
+	RSCDEBUG(logger, "parse: " << file);
 
 	vector<Transform> transforms;
 	BOOST_FOREACH(ptree::value_type const& v, pt.get_child("rct.transforms") ) {
-		LOG4CXX_TRACE(logger, "section: transform");
+		RSCTRACE(logger, "section: transform");
 		ptree ptTransform = v.second;
 		ptree ptTranslation = v.second.get_child("translation").begin()->second;
 		ptree ptRotation = v.second.get_child("rotation").begin()->second;
 
 		string parent = ptTransform.get<string>("<xmlattr>.parent");
 		string child = ptTransform.get<string>("<xmlattr>.child");
-		LOG4CXX_TRACE(logger, "parent: " << parent << "  child: " << child);
+		RSCTRACE(logger, "parent: " << parent << "  child: " << child);
 		boost::optional<double> tx = ptTranslation.get_optional<double>(
 				boost::property_tree::path("x", '/'));
 		boost::optional<double> ty = ptTranslation.get_optional<double>(
 				boost::property_tree::path("y", '/'));
 		boost::optional<double> tz = ptTranslation.get_optional<double>(
 				boost::property_tree::path("z", '/'));
-		LOG4CXX_TRACE(logger, "x:" << tx << "  y:" << ty << "  z:" << tz);
+		RSCTRACE(logger, "x:" << tx << "  y:" << ty << "  z:" << tz);
 		boost::optional<double> yaw = ptRotation.get_optional<double>(
 				boost::property_tree::path("yaw", '/'));
 		boost::optional<double> pitch = ptRotation.get_optional<double>(
@@ -73,8 +73,8 @@ ParserResult ParserXML::parse(const string& file) {
 				boost::property_tree::path("qy", '/'));
 		boost::optional<double> qz = ptRotation.get_optional<double>(
 				boost::property_tree::path("qz", '/'));
-		LOG4CXX_TRACE(logger, "yaw:" << yaw << "  pitch:" << pitch << "  roll:" << roll);
-		LOG4CXX_TRACE(logger, "qw:" << qw << "  qx:" << qx << "  qy:" << qy << "  qz:" << qz);
+		RSCTRACE(logger, "yaw:" << yaw << "  pitch:" << pitch << "  roll:" << roll);
+		RSCTRACE(logger, "qw:" << qw << "  qx:" << qx << "  qy:" << qy << "  qz:" << qz);
 
 		if (!tx || !ty || !tz) {
 			stringstream ss;
@@ -101,7 +101,7 @@ ParserResult ParserXML::parse(const string& file) {
 			Eigen::Affine3d a = Eigen::Affine3d().fromPositionOrientationScale(translation, r,
 					Eigen::Vector3d::Ones());
 			Transform t(a, parent, child, boost::posix_time::microsec_clock::universal_time());
-			LOG4CXX_DEBUG(logger, "parsed transform: " << t);
+			RSCDEBUG(logger, "parsed transform: " << t);
 			transforms.push_back(t);
 			continue;
 
@@ -117,7 +117,7 @@ ParserResult ParserXML::parse(const string& file) {
 			Eigen::Affine3d a = Eigen::Affine3d().fromPositionOrientationScale(translation, r,
 					Eigen::Vector3d::Ones());
 			Transform t(a, parent, child, boost::posix_time::microsec_clock::universal_time());
-			LOG4CXX_DEBUG(logger, "parsed transform: " << t);
+			RSCDEBUG(logger, "parsed transform: " << t);
 			transforms.push_back(t);
 			continue;
 		} else {
@@ -137,12 +137,12 @@ ParserResult ParserXML::parse(const string& file) {
 		if (ptCachetimeIt) {
 			ptree ptCachetime = ptCachetimeIt.get().front().second;
 			boost::optional<int> cachetime = ptCachetime.get_optional<int>(boost::property_tree::path("value", '/'));
-			LOG4CXX_TRACE(logger, "cachetime:" << cachetime);
+			RSCTRACE(logger, "cachetime:" << cachetime);
 			if (cachetime) {
 				config.setCacheTime(boost::posix_time::time_duration(0, 0, cachetime.get()));
 			}
 		} else {
-			LOG4CXX_TRACE(logger, "no cachetime");
+			RSCTRACE(logger, "no cachetime");
 		}
 	}
 

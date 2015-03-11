@@ -15,7 +15,7 @@ using namespace boost::property_tree;
 
 namespace rct {
 
-log4cxx::LoggerPtr ParserINI::logger = log4cxx::Logger::getLogger("rct.ParserINI");
+rsc::logging::LoggerPtr ParserINI::logger = rsc::logging::Logger::getLogger("rct.ParserINI");
 
 ParserINI::ParserINI() {
 }
@@ -28,9 +28,9 @@ bool ParserINI::canParse(const string& file) {
 	try {
 		ini_parser::read_ini(file, pt);
 	} catch (ini_parser_error &e) {
-		LOG4CXX_TRACE(logger, "cannot parse " << file << ". Reason: " << e.what());
+		RSCTRACE(logger, "cannot parse " << file << ". Reason: " << e.what());
 	}
-	LOG4CXX_DEBUG(logger, "can parse " << file << ": " << !pt.empty());
+	RSCDEBUG(logger, "can parse " << file << ": " << !pt.empty());
 	return !pt.empty();
 }
 
@@ -38,7 +38,7 @@ ParserResult ParserINI::parse(const string& file) {
 	ptree pt;
 	ini_parser::read_ini(file, pt);
 
-	LOG4CXX_DEBUG(logger, "parse: " << file);
+	RSCDEBUG(logger, "parse: " << file);
 
 	vector<Transform> transforms;
 	ptree::const_iterator itTrans;
@@ -87,7 +87,7 @@ ParserResult ParserINI::parse(const string& file) {
 			Eigen::Affine3d a = Eigen::Affine3d().fromPositionOrientationScale(translation, r,
 								Eigen::Vector3d::Ones());
 			Transform t(a, parent, child, boost::posix_time::microsec_clock::universal_time());
-			LOG4CXX_DEBUG(logger, "parsed transform: " << t);
+			RSCDEBUG(logger, "parsed transform: " << t);
 			transforms.push_back(t);
 			continue;
 
@@ -103,7 +103,7 @@ ParserResult ParserINI::parse(const string& file) {
 			Eigen::Affine3d a = Eigen::Affine3d().fromPositionOrientationScale(translation, r,
 								Eigen::Vector3d::Ones());
 			Transform t(a, parent, child, boost::posix_time::microsec_clock::universal_time());
-			LOG4CXX_DEBUG(logger, "parsed transform: " << t);
+			RSCDEBUG(logger, "parsed transform: " << t);
 			transforms.push_back(t);
 			continue;
 		} else {

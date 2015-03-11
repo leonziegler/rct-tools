@@ -13,11 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/progress.hpp>
-#include <log4cxx/log4cxx.h>
-#include <log4cxx/logger.h>
-#include <log4cxx/basicconfigurator.h>
-#include <log4cxx/consoleappender.h>
-#include <log4cxx/patternlayout.h>
+#include <rsc/logging/Logger.h>
 #include "rct-tools-config.h"
 #ifdef POPPLERQT4_FOUND
 #include <poppler-qt4.h>
@@ -34,7 +30,7 @@
 
 using namespace boost::program_options;
 using namespace std;
-using namespace log4cxx;
+using namespace rsc::logging;
 
 void printHelp(int argc, char **argv, options_description desc) {
 	cout << "Usage:\n  " << argv[0] << " [options]\n"
@@ -63,18 +59,13 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	LayoutPtr pattern(new PatternLayout("%r [%t] %-5p %c - %m%n"));
-	AppenderPtr appender(new ConsoleAppender(pattern));
-	Logger::getRootLogger()->addAppender(appender);
-
+	Logger::getLogger("")->setLevel(Logger::LEVEL_WARN);
 	if (vm.count("debug")) {
-		Logger::getRootLogger()->setLevel(Level::getDebug());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_DEBUG);
 	} else if (vm.count("trace")) {
-		Logger::getRootLogger()->setLevel(Level::getTrace());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_TRACE);
 	} else if (vm.count("info")) {
-		Logger::getRootLogger()->setLevel(Level::getInfo());
-	} else {
-		Logger::getRootLogger()->setLevel(Level::getWarn());
+		Logger::getLogger("rct")->setLevel(Logger::LEVEL_INFO);
 	}
 
 	double seconds = 5.0;

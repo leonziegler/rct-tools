@@ -10,7 +10,7 @@
 #include <vector>
 #include <rct/impl/TransformCommunicator.h>
 #include <boost/thread.hpp>
-#include <log4cxx/logger.h>
+#include <rsc/logging/Logger.h>
 
 namespace rct {
 
@@ -30,7 +30,7 @@ public:
 	Handler(RctRosBridge* parent, const std::string &loggerSuffix = "") :
 			parent(parent),
 			logger(
-					log4cxx::Logger::getLogger(
+					rsc::logging::Logger::getLogger(
 							std::string("rct.RctRosBridge.Handler") + loggerSuffix)) {
 	}
 	virtual ~Handler() {
@@ -42,7 +42,7 @@ private:
 	RctRosBridge* parent;
 	boost::mutex mutexHandler;
 	std::vector<TransformWrapper> transforms;
-	log4cxx::LoggerPtr logger;
+	rsc::logging::LoggerPtr logger;
 };
 
 class RctRosBridge {
@@ -63,7 +63,7 @@ private:
 	boost::condition_variable cond;
 	boost::mutex mutex;
 
-	static log4cxx::LoggerPtr logger;
+	static rsc::logging::LoggerPtr logger;
 };
 
 } /* namespace rct */
