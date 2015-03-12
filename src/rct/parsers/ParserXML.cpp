@@ -10,6 +10,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/foreach.hpp>
+#include <rsc/logging/Logger.h>
 
 using namespace std;
 using namespace boost::property_tree;
@@ -36,7 +37,19 @@ bool ParserXML::canParse(const string& file) {
 	return !pt.empty();
 }
 
-ParserResult ParserXML::parse(const string& file) {
+vector<string> ParserXML::parseConvertScopes(const string& file) {
+	ptree pt;
+	xml_parser::read_xml(file, pt);
+
+	RSCDEBUG(logger, "parse: " << file);
+
+	vector<string> scopes;
+	BOOST_FOREACH(ptree::value_type const& v, pt.get_child("rct.scopes") ) {
+		scopes.push_back(v.second.data());
+	}
+	return scopes;
+}
+ParserResultTransforms ParserXML::parseStaticTransforms(const string& file) {
 	ptree pt;
 	xml_parser::read_xml(file, pt);
 
@@ -146,10 +159,31 @@ ParserResult ParserXML::parse(const string& file) {
 		}
 	}
 
-	ParserResult results;
+	ParserResultTransforms results;
 	results.transforms = transforms;
 	results.config = config;
 	return results;
+}
+
+vector<ParserResultMessage> ParserXML::parseConvertMessages(const string& file) {
+	ptree pt;
+	xml_parser::read_xml(file, pt);
+
+	RSCDEBUG(logger, "parse: " << file);
+
+	vector<ParserResultMessage> messages;
+	BOOST_FOREACH(ptree::value_type const& v, pt.get_child("rct.messages") ) {
+		RSCTRACE(logger, "section: message");
+		ptree ptMessage = v.second;
+		ParserResultMessage msg;
+		msg.parent = ptMessage.get<string>("<xmlattr>.parent");
+		msg.child = ptMessage.get<string>("<xmlattr>.child");
+		msg.authority = ptMessage.get<string>("<xmlattr>.authority");
+		msg.scope = ptMessage.get<string>("<xmlattr>.scope");
+		messages.push_back(msg);
+	}
+
+	return messages;
 }
 
 }  // namespace rct

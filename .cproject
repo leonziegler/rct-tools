@@ -30,6 +30,8 @@
 									<listOptionValue builtIn="false" value="/usr/include/qt5/QtGui"/>
 									<listOptionValue builtIn="false" value="/usr/include/qt5/QtWidgets"/>
 									<listOptionValue builtIn="false" value="/vol/robocup/nightly/include/rsc0.11"/>
+									<listOptionValue builtIn="false" value="/vol/robocup/nightly/include/rsb0.11"/>
+									<listOptionValue builtIn="false" value="/vol/robocup/nightly/include/rst0.11/stable"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1230691207" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 							</tool>

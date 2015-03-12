@@ -20,7 +20,9 @@ public:
 	virtual ~ParserINI();
 
 	virtual bool canParse(const std::string& file);
-	virtual ParserResult parse(const std::string& file);
+	virtual ParserResultTransforms parseStaticTransforms(const std::string& file);
+	virtual std::vector<std::string> parseConvertScopes(const std::string& file);
+	virtual std::vector<ParserResultMessage> parseConvertMessages(const std::string& file);
 
 private:
 	static rsc::logging::LoggerPtr logger;

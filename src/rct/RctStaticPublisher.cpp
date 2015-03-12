@@ -85,12 +85,12 @@ int main(int argc, char **argv) {
 		TransformPublisher::Ptr publisher = getTransformerFactory().createTransformPublisher(name);
 
 		RSCDEBUG(logger, "reading config file: " << configFile)
-		ParserResult result;
+		ParserResultTransforms result;
 		vector<Parser::Ptr>::iterator it;
 		for (it = parsers.begin(); it != parsers.end(); ++it) {
 			Parser::Ptr p = *it;
 			if (p->canParse(configFile)){
-				result =p->parse(configFile);
+				result =p->parseStaticTransforms(configFile);
 				break;
 			}
 		}

@@ -1,0 +1,9 @@
+<rct>
+	<core>
+		<cachetime value="30" />
+	</core>
+	<messages>
+		<message  parent="map" child="base" scope="/nav/slampose" authority="slam" />
+		<message  parent="base" child="ee" scope="/arm/ee/pose" authority="armserver" />
+	</messages>
+</rct>

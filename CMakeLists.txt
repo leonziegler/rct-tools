@@ -106,3 +106,4 @@ include_directories("${PROJECT_BINARY_DIR}/src/rct/")
 
 # --- build instructions ---
 ADD_SUBDIRECTORY(src)
+ADD_SUBDIRECTORY(examples)

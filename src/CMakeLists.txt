@@ -22,6 +22,12 @@ TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES
 SET_TARGET_PROPERTIES(rct-echo PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+                                 
+ADD_EXECUTABLE(rct-from-rst rct/RctFromRst.cpp rct/parsers/ParserXML.cpp rct/parsers/ParserINI.cpp)
+TARGET_LINK_LIBRARIES(rct-from-rst ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} )
+SET_TARGET_PROPERTIES(rct-from-rst PROPERTIES
+                                 VERSION ${RCTTOOLS_VERSION}
+                                 SOVERSION ${RCTTOOLS_VERSION_SHORT})
 
 SET(RCT-VIEW-SOURCES rct/RctView.cpp)
 SET(RCT-VIEW-LIBS ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES})

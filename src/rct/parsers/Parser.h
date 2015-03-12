@@ -16,17 +16,27 @@
 
 namespace rct {
 
-class ParserResult {
+class ParserResultTransforms {
 public:
 	TransformerConfig config;
 	std::vector<Transform> transforms;
+};
+
+class ParserResultMessage {
+public:
+	std::string parent;
+	std::string child;
+	std::string authority;
+	std::string scope;
 };
 
 class Parser {
 public:
 	typedef boost::shared_ptr<Parser> Ptr;
 	virtual bool canParse(const std::string& file) = 0;
-	virtual ParserResult parse(const std::string& file) = 0;
+	virtual ParserResultTransforms parseStaticTransforms(const std::string& file) = 0;
+	virtual std::vector<std::string> parseConvertScopes(const std::string& file) = 0;
+	virtual std::vector<ParserResultMessage> parseConvertMessages(const std::string& file) = 0;
 	virtual ~Parser() {
 	}
 };

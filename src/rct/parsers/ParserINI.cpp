@@ -9,6 +9,8 @@
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
+#include <boost/foreach.hpp>
+#include <boost/algorithm/string.hpp>
 
 using namespace std;
 using namespace boost::property_tree;
@@ -28,13 +30,34 @@ bool ParserINI::canParse(const string& file) {
 	try {
 		ini_parser::read_ini(file, pt);
 	} catch (ini_parser_error &e) {
-		RSCTRACE(logger, "cannot parse " << file << ". Reason: " << e.what());
+		if (boost::algorithm::ends_with(file, ".ini") || boost::algorithm::ends_with(file, ".conf")) {
+			RSCWARN(logger, "cannot parse " << file << ". Reason: " << e.what());
+		} else {
+			RSCDEBUG(logger, "cannot parse " << file << ". Reason: " << e.what());
+		}
 	}
 	RSCDEBUG(logger, "can parse " << file << ": " << !pt.empty());
 	return !pt.empty();
 }
 
-ParserResult ParserINI::parse(const string& file) {
+vector<string>  ParserINI::parseConvertScopes(const string& file) {
+	ptree pt;
+	ini_parser::read_ini(file, pt);
+
+	RSCDEBUG(logger, "parse: " << file);
+	vector<string> scopes;
+
+	BOOST_FOREACH(ptree::value_type const& v, pt.get_child("scopes") ) {
+		RSCDEBUG(logger, v.first << " -> " << v.second.data());
+		if (boost::algorithm::contains(v.first, "scope")) {
+			scopes.push_back(v.second.data());
+		}
+	}
+
+	return scopes;
+}
+
+ParserResultTransforms ParserINI::parseStaticTransforms(const string& file) {
 	ptree pt;
 	ini_parser::read_ini(file, pt);
 
@@ -116,9 +139,36 @@ ParserResult ParserINI::parse(const string& file) {
 		}
 	}
 
-	ParserResult results;
+	ParserResultTransforms results;
 	results.transforms = transforms;
 	return results;
+}
+
+vector<ParserResultMessage> ParserINI::parseConvertMessages(const string& file) {
+
+	vector<ParserResultMessage> messages;
+	ptree pt;
+	ini_parser::read_ini(file, pt);
+
+	RSCDEBUG(logger, "parse: " << file);
+
+	ptree::const_iterator itTrans;
+	for (itTrans = pt.begin(); itTrans != pt.end(); ++itTrans) {
+		if (!boost::algorithm::starts_with(itTrans->first, "message")) {
+			continue;
+		}
+		string section = itTrans->first;
+		ptree ptMessage = itTrans->second;
+		ParserResultMessage msg;
+
+		msg.parent = ptMessage.get<string>("parent");
+		msg.child = ptMessage.get<string>("child");
+		msg.authority = ptMessage.get<string>("authority");
+		msg.scope = ptMessage.get<string>("scope");
+		messages.push_back(msg);
+	}
+
+	return messages;
 }
 
 }  // namespace rct
