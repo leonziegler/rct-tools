@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
+
+SET(RCT_ALL_TARGETS "")
             
 # --- generate executable
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/core/src ${CMAKE_SOURCE_DIR}/rsb/src ${CMAKE_SOURCE_DIR}/ros/src ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/../../core/src)
@@ -8,6 +10,7 @@ TARGET_LINK_LIBRARIES(rct-static-publisher ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${R
 SET_TARGET_PROPERTIES(rct-static-publisher PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+LIST(APPEND RCT_ALL_TARGETS rct-static-publisher)
 
 IF(tf2_ros_FOUND)
     ADD_EXECUTABLE(rct-ros-bridge rct/RctRosBridge.cpp)
@@ -15,6 +18,7 @@ IF(tf2_ros_FOUND)
     SET_TARGET_PROPERTIES(rct-ros-bridge PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+LIST(APPEND RCT_ALL_TARGETS rct-ros-bridge)
 ENDIF(tf2_ros_FOUND)
 
 ADD_EXECUTABLE(rct-echo rct/RctEcho.cpp)
@@ -22,12 +26,14 @@ TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES
 SET_TARGET_PROPERTIES(rct-echo PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+LIST(APPEND RCT_ALL_TARGETS rct-echo)
                                  
 ADD_EXECUTABLE(rct-from-rst rct/RctFromRst.cpp rct/parsers/ParserXML.cpp rct/parsers/ParserINI.cpp)
 TARGET_LINK_LIBRARIES(rct-from-rst ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} )
 SET_TARGET_PROPERTIES(rct-from-rst PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+LIST(APPEND RCT_ALL_TARGETS rct-from-rst)
 
 SET(RCT-VIEW-SOURCES rct/RctView.cpp)
 SET(RCT-VIEW-LIBS ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES})
@@ -45,7 +51,8 @@ TARGET_LINK_LIBRARIES(rct-view ${RCT-VIEW-LIBS})
 SET_TARGET_PROPERTIES(rct-view PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
+LIST(APPEND RCT_ALL_TARGETS rct-view)
 
 # --- install target
-INSTALL(TARGETS rct-static-publisher
+INSTALL(TARGETS ${RCT_ALL_TARGETS}
         RUNTIME DESTINATION ${BINDIR})
