@@ -98,10 +98,6 @@ ELSE(POPPLERQT5_FOUND)
     MESSAGE(STATUS "PopplerQt5 not found")
 ENDIF(POPPLERQT5_FOUND)
 
-IF(POPPLERQT5_FOUND OR POPPLERQT4_FOUND)
-    
-ENDIF(POPPLERQT5_FOUND OR POPPLERQT4_FOUND)
-
 configure_file(src/rct/rct-tools-config.h.in "${PROJECT_BINARY_DIR}/src/rct/rct-tools-config.h")
 include_directories("${PROJECT_BINARY_DIR}/src/rct/")
 
