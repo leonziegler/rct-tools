@@ -1,225 +1,184 @@
 /*
- * RctRosBridge.cpp
- *
- *  Created on: Dec 16, 2014
- *      Author: leon
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
  */
 
-#include "RctRosBridge.h"
-#include <rct/rctConfig.h>
+/* 
+ * File:   AnotherRctROSBridge.cpp
+ * Author: michael
+ *
+ * Created on 17. Dezember 2015, 09:11
+ */
+
+#include <cstdlib>
+
+#include <boost/lockfree/queue.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+
+#include <rsc/logging/Logger.h>
+#include <rsc/misc/SignalWaiter.h>
+
+#include <rct/impl/TransformCommunicator.h>
 #include <rct/impl/TransformCommRsb.h>
 #include <rct/impl/TransformCommRos.h>
-#include <rct/impl/TransformerTF2.h>
 
-#include <boost/program_options.hpp>
-
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <rsc/logging/Logger.h>
-#include <rsc/logging/OptionBasedConfigurator.h>
-#include <rsc/logging/LoggerFactory.h>
-#include <iostream>
-#include <csignal>
-
-using namespace boost::program_options;
-using namespace boost::filesystem;
 using namespace std;
-using namespace rsc::logging;
+using namespace rct;
+using namespace rsc::misc;
 
-rct::RctRosBridge *bridge;
+struct TransformWrapper {
+public:
+    Transform* transform;
+    bool isStatic;
+};
 
-void signalHandler(int signum) {
-	cout << "Interrupt signal (" << signum << ") received." << endl;
-	bridge->interrupt();
+template <class queue_t>
+class Handler : public TransformListener {
+public:
+    typedef boost::shared_ptr< Handler<queue_t> > Ptr;
+
+    Handler(queue_t& queue, std::string authorityToIgnore) :
+    queue(queue), logger(rsc::logging::Logger::getLogger("rct.anotherrctrosbridge.Handler")),
+    authorityToIgnore(authorityToIgnore) {
+    }
+
+    virtual ~Handler() {
+    }
+
+    void newTransformAvailable(const Transform& transform, bool isStatic) {
+
+        TransformWrapper wrappedTransform;
+
+        wrappedTransform.isStatic = isStatic;
+        wrappedTransform.transform = new Transform(transform);
+
+        while (!queue.push(wrappedTransform)) {
+            TransformWrapper discardedTransform;
+            queue.pop(discardedTransform);
+        }
+    }
+private:
+    std::string authorityToIgnore;
+    queue_t& queue;
+    rsc::logging::LoggerPtr logger;
+};
+
+template<int timeBeweenTicksMS = 20, int queueBounds = 10000 >
+class CommunicatorConnector {
+public:
+    typedef boost::lockfree::queue< TransformWrapper, boost::lockfree::capacity<queueBounds> > queue_t;
+
+    CommunicatorConnector(TransformCommunicator::Ptr fromCommunicator, TransformCommunicator::Ptr toCommunicator,
+            std::string logname) :
+    fromCommunicator(fromCommunicator), toCommunicator(toCommunicator),
+    logger(rsc::logging::Logger::getLogger("rct.anotherrctrosbridge." + logname)) {
+        fromCommunicator->addTransformListener(typename Handler<queue_t>::Ptr(new Handler<queue_t>(queue, "none")));
+        nextTickTime = boost::posix_time::microsec_clock::universal_time();
+
+        boost::thread temp(boost::bind(&CommunicatorConnector<timeBeweenTicksMS, queueBounds>::publishThread, this));
+        publisher.swap(temp);
+    }
+
+    void stop() {
+        publisher.interrupt();
+    }
+
+private:
+
+    void publishThread() {
+
+        unsigned long numTransformsRelayed = 0;
+        unsigned long numCycles = 0;
+        while (true) {
+            
+            vector<Transform> dynamicTransforms;
+            vector<Transform> staticTransforms;
+
+            TransformWrapper transform;
+            while (queue.pop(transform)) {
+                if (transform.transform->getAuthority() != fromCommunicator->getAuthorityName()) {
+                    if (transform.isStatic) {
+                        staticTransforms.push_back(*transform.transform);
+//                        toCommunicator->sendTransform(staticTransforms.back(), rct::STATIC);
+                    } else {
+                        dynamicTransforms.push_back(*transform.transform);
+//                        toCommunicator->sendTransform(dynamicTransforms.back(), rct::DYNAMIC);
+                    }
+                } else {
+                    RSCDEBUG(logger, "ignored transform due to authority!");
+                }
+                delete transform.transform;
+            }
+
+            numTransformsRelayed += dynamicTransforms.size();
+            numTransformsRelayed += staticTransforms.size();
+
+            if (dynamicTransforms.size() > 0) {
+                RSCTRACE(logger, boost::str(boost::format("Sending %1% dynamic transforms!") % dynamicTransforms.size()));
+                toCommunicator->sendTransform(dynamicTransforms, rct::DYNAMIC);
+            }
+            if (staticTransforms.size() > 0) {
+                RSCTRACE(logger, boost::str(boost::format("Sending %1% static transforms!") % staticTransforms.size()));
+                toCommunicator->sendTransform(staticTransforms, rct::STATIC);
+            }
+
+            nextTickTime += boost::posix_time::millisec(timeBeweenTicksMS);
+            boost::this_thread::sleep(nextTickTime);
+            numCycles++;
+            RSCDEBUG(logger, boost::str(boost::format("Have sent %1% transforms in %2% cycles") % numTransformsRelayed % numCycles));
+        }
+    }
+
+    rsc::logging::LoggerPtr logger;
+    boost::thread publisher;
+    TransformCommunicator::Ptr fromCommunicator;
+    TransformCommunicator::Ptr toCommunicator;
+    queue_t queue;
+    boost::posix_time::ptime nextTickTime;
+};
+
+/*
+ * 
+ */
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "rctrosbridge");
+    ros::AsyncSpinner spinner(4);
+    spinner.start();
+
+    initSignalWaiter();
+
+    TransformCommunicator::Ptr commRsb;
+    TransformerConfig configRsb;
+    configRsb.setCommType(TransformerConfig::RSB);
+    commRsb = TransformCommRsb::Ptr(new TransformCommRsb("bridge"));
+    commRsb->init(configRsb);
+
+    TransformCommunicator::Ptr commRos;
+    TransformerConfig configRos;
+    configRos.setCommType(TransformerConfig::ROS);
+    commRos = TransformCommRos::Ptr(new TransformCommRos("bridge", configRos.getCacheTime(), false, 100));
+    commRos->init(configRos);
+
+    CommunicatorConnector<> rsbToRos(commRsb, commRos, "RsbToRos");
+    CommunicatorConnector<> rosToRsb(commRos, commRsb, "RosToRsb");
+
+    cout << "Communicators set up..." << endl;
+
+    cout << "Stop with Ctrl + C!" << endl;
+    Signal s = waitForSignal();
+
+    cout << "Stop requested!" << endl;
+
+    rsbToRos.stop();
+    rosToRsb.stop();
+
+    commRos->shutdown();
+    commRsb->shutdown();
+
+    cout << "Stopped!" << endl;
+
+    ros::shutdown();
+
+    return suggestedExitCode(s);
 }
-
-int main(int argc, char **argv) {
-	options_description desc("Allowed options");
-	variables_map vm;
-
-	desc.add_options()("help,h", "produce help message") // help
-	("debug", "debug mode") //debug
-	("trace", "trace mode") //trace
-	("info", "info mode")
-	("log-prop,l", value<string>(), "logging properties file");
-
-	store(parse_command_line(argc, argv, desc), vm);
-	notify(vm);
-
-	if (vm.count("help")) {
-		cout << "Usage:\n  " << argv[0] << " [options]\n" << endl;
-		cout << desc << endl;
-		return 0;
-	}
-	Logger::getLogger("")->setLevel(Logger::LEVEL_WARN);
-	if (vm.count("debug")) {
-		Logger::getLogger("rct")->setLevel(Logger::LEVEL_DEBUG);
-	} else if (vm.count("trace")) {
-		Logger::getLogger("rct")->setLevel(Logger::LEVEL_TRACE);
-	} else if (vm.count("info")) {
-		Logger::getLogger("rct")->setLevel(Logger::LEVEL_INFO);
-	} else if (vm.count("log-prop")) {
-		string properties = vm["log-prop"].as<string>();
-		cout << "Using logging properties: " << properties << endl;
-		LoggerFactory::getInstance().reconfigureFromFile(properties);
-	}
-
-	try {
-
-		map<string, string> remappings;
-		ros::init(argc, argv, "rctrosbridge");
-
-		bridge = new rct::RctRosBridge("rctrosbridge");
-
-		// register signal SIGINT and signal handler
-		signal(SIGINT, signalHandler);
-
-		ros::AsyncSpinner spinner(4);
-		spinner.start();
-
-		cout << "successfully started" << endl;
-
-		// block
-		bool ret = bridge->run();
-
-		if (!ret) {
-			cout << "done" << endl;
-		}
-		return ret;
-
-	} catch (std::exception &e) {
-		cerr << "Error:\n  " << e.what() << "\n" << endl;
-		return 1;
-	}
-}
-
-namespace rct {
-
-rsc::logging::LoggerPtr RctRosBridge::logger = rsc::logging::Logger::getLogger("rct.RctRosBridge");
-
-RctRosBridge::RctRosBridge(const string &name, bool rosLegacyMode, long rosLegacyIntervalMSec) :
-		interrupted(false) {
-
-	rosHandler = Handler::Ptr(new Handler(this, "Ros"));
-	rsbHandler = Handler::Ptr(new Handler(this, "Rsb"));
-
-	TransformerConfig configRsb;
-	configRsb.setCommType(TransformerConfig::RSB);
-	commRsb = TransformCommRsb::Ptr(new TransformCommRsb(name, rsbHandler));
-	commRsb->init(configRsb);
-
-	TransformerConfig configRos;
-	configRos.setCommType(TransformerConfig::ROS);
-	commRos = TransformCommRos::Ptr(new TransformCommRos(name, configRos.getCacheTime(), rosHandler, rosLegacyMode, rosLegacyIntervalMSec));
-	commRos->init(configRos);
-}
-
-void RctRosBridge::notify() {
-	boost::mutex::scoped_lock lock(mutex);
-	cond.notify_all();
-}
-
-bool RctRosBridge::run() {
-
-	RSCINFO(logger, "start running");
-
-	// run until interrupted
-	while (!interrupted && ros::ok()) {
-		boost::mutex::scoped_lock lock(mutex);
-		// wait for notification
-		RSCTRACE(logger, "wait");
-		cond.wait(lock);
-		RSCTRACE(logger, "notified");
-		if (bridge) {
-			while (rsbHandler->hasTransforms()) {
-				RSCDEBUG(logger, "rsb handler has transforms");
-				TransformWrapper t = rsbHandler->nextTransform();
-				if (t.getAuthority() != commRsb->getAuthorityName()) {
-					TransformType type = STATIC;
-					if (!t.isStatic) {
-						type = DYNAMIC;
-						RSCDEBUG(logger, "publish dynamic transform " << t);
-					} else {
-						RSCDEBUG(logger, "publish static transform " << t);
-					}
-					t.setAuthority(string("rct:") + t.getAuthority());
-					try {
-						commRos->sendTransform(t, type);
-					} catch (std::exception& e) {
-						RSCTRACE(logger, "Error sending transform. Reason: " << e.what());
-					}
-				} else {
-					RSCTRACE(logger,
-							"skip bridging of transform from rsb to ros because own authority: " << t.getAuthority());
-				}
-			}
-			while (rosHandler->hasTransforms()) {
-				RSCDEBUG(logger, "ros handler has transforms");
-				TransformWrapper t = rosHandler->nextTransform();
-				if (t.getAuthority() != commRos->getAuthorityName()) {
-					TransformType type = STATIC;
-					if (!t.isStatic) {
-						type = DYNAMIC;
-					}
-					t.setAuthority(string("ros:") + t.getAuthority());
-					try {
-						commRsb->sendTransform(t, type);
-					} catch (std::exception& e) {
-						RSCTRACE(logger, "Error sending transform. Reason: " << e.what());
-					}
-				} else {
-					RSCTRACE(logger,
-							"skip bridging of transform from ros to rsb because own authority: " << t.getAuthority());
-				}
-			}
-		}
-		RSCTRACE(logger, "loop done");
-	}
-	RSCWARN(logger, "interrupted");
-	RSCINFO(logger, "shutdown");
-	RSCTRACE(logger, "shutdown rsb communicator");
-	commRsb->shutdown();
-	RSCTRACE(logger, "shutdown ros communicator");
-	commRos->shutdown();
-
-	if (!ros::ok()) {
-		RSCWARN(logger, "Shutdown request received from ROS");
-		cerr << "Shutdown request received from ROS" << endl;
-		return 1;
-	}
-	RSCINFO(logger, "done");
-	return 0;
-}
-void RctRosBridge::interrupt() {
-	interrupted = true;
-	notify();
-}
-
-RctRosBridge::~RctRosBridge() {
-}
-
-void Handler::newTransformAvailable(const Transform& transform, bool isStatic) {
-	RSCTRACE(logger, "newTransformAvailable()");
-	{
-		boost::mutex::scoped_lock lock(mutexHandler);
-		TransformWrapper w(transform, isStatic);
-		transforms.push_back(w);
-	}
-	parent->notify();
-}
-bool Handler::hasTransforms() {
-	boost::mutex::scoped_lock lock(mutexHandler);
-	return !transforms.empty();
-}
-
-TransformWrapper Handler::nextTransform() {
-	if (!hasTransforms()) {
-		throw std::range_error("no transforms available");
-	}
-	boost::mutex::scoped_lock lock(mutexHandler);
-	TransformWrapper ret = *transforms.begin();
-	transforms.erase(transforms.begin());
-	return ret;
-}
-
-} /* namespace rct */

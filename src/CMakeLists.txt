@@ -19,7 +19,9 @@ IF(tf2_ros_FOUND AND RCT-ROS_FOUND)
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
 	LIST(APPEND RCT_ALL_TARGETS rct-ros-bridge)
+
 ENDIF(tf2_ros_FOUND AND RCT-ROS_FOUND)
+
 
 ADD_EXECUTABLE(rct-echo rct/RctEcho.cpp)
 TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} )
