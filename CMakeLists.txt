@@ -50,7 +50,7 @@ INCLUDE_DIRECTORIES(BEFORE SYSTEM  ${Eigen3_INCLUDE_DIRS})
 LINK_DIRECTORIES(${Eigen3_LIBRARY_DIRS})
 
 #rsc
-find_package(RSC 0.11 REQUIRED)
+find_package(RSC 0.13 REQUIRED)
 message(STATUS "RSC version: ${RSC_VERSION}")
 include_directories(BEFORE SYSTEM ${RSC_INCLUDE_DIRS})
 link_directories(${RSC_LIBRARY_DIRS})
@@ -65,7 +65,7 @@ ELSE(tf2_ros_FOUND)
 ENDIF(tf2_ros_FOUND)
 
 #boost
-FIND_PACKAGE(Boost REQUIRED QUIET COMPONENTS thread program_options date_time)
+FIND_PACKAGE(Boost REQUIRED QUIET COMPONENTS system thread program_options date_time)
 INCLUDE_DIRECTORIES(Boost_INCLUDE_DIRS)
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
