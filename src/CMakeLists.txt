@@ -22,14 +22,14 @@ IF(tf2_ros_FOUND AND RCT-ROS_FOUND)
 ENDIF(tf2_ros_FOUND AND RCT-ROS_FOUND)
 
 ADD_EXECUTABLE(rct-echo rct/RctEcho.cpp)
-TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} )
+TARGET_LINK_LIBRARIES(rct-echo ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} ${Boost_LIBRARIES})
 SET_TARGET_PROPERTIES(rct-echo PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
 LIST(APPEND RCT_ALL_TARGETS rct-echo)
                                  
 ADD_EXECUTABLE(rct-from-rst rct/RctFromRst.cpp rct/parsers/ParserXML.cpp rct/parsers/ParserINI.cpp)
-TARGET_LINK_LIBRARIES(rct-from-rst ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} )
+TARGET_LINK_LIBRARIES(rct-from-rst ${RCT_LIBRARIES} ${RSB_LIBRARIES} ${RST_LIBRARIES} ${Boost_LIBRARIES})
 SET_TARGET_PROPERTIES(rct-from-rst PROPERTIES
                                  VERSION ${RCTTOOLS_VERSION}
                                  SOVERSION ${RCTTOOLS_VERSION_SHORT})
