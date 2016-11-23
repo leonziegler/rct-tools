@@ -27,7 +27,7 @@ using namespace std;
 using namespace rct;
 using namespace rsc::misc;
 
-struct TransformWrapper {
+class TransformWrapper {
 public:
     Transform* transform;
     bool isStatic;
